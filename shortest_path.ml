@@ -1,56 +1,73 @@
 (* shortest path problem *)
-(* node array *)
-(* node indices: 0,1,2,3,4 *)
-let get_forward_hash link = 
-  let h = Hashtbl.create (Array.length link) in
-  (Array.iter (fun x -> match x with (a,b) -> Hashtbl.add h a b) link; h);;
 
-let get_backward_hash link = 
-  let h = Hashtbl.create (Array.length link) in
-  (Array.iter (fun x -> match x with (a,b) -> Hashtbl.add h b a) link;
-  h);;
+(* sample input data *)
+let links = [|[(1,8);(3,15)];[(2,14);(3,3)];[(4,10)];[(2,5);(4,17)]|];;
 
-let get_cost_hash costs = 
-  let h = Hashtbl.create (Array.length costs) in
-  Array.iter (fun x -> match x with (a,b,c) -> Hashtbl.add h (a,b) c) costs;
-  h;;
+(* solve *)
 
-(* sample data *)
-let nodes = [|0;1;2;3;4|];;
-let forward_links = [|(0,1);(0,3);(1,2);(1,3);(2,4);(3,2);(3,4)|];;
-let costs = [|(0,1,8);(0,3,15);(1,2,14);(1,3,3);(2,4,10);(3,2,5);(3,4,17)|];;
-
-(* naive solution *)
-let solve nodes links costs start_node end_node =
-  let forward_link_hash = get_forward_hash links in
-  let cost_hash = get_cost_hash costs in
-  let n = Array.length nodes in 
-  let v = Array.create (Array.length nodes) 100 (*Big-M is set to 100*) in
-  v.(n-1) <- 0;
-  let show v = 
-    Array.iteri (fun i x -> Printf.printf "%d:%d " i x) v;
-    Printf.printf "\n" in
-  let update nodes cost_hash forward_link_hash v is_not_updated = 
-    for i=0 to (n-2) do (* v.(i) <- min (v.(i), min_j (costs.(i,j) + v.(j)) *)
-      let next_nodes = (Hashtbl.find_all forward_link_hash nodes.(i)) in 
-      let candidate_v =
-        List.fold_left (fun x y -> min x (v.(y) + Hashtbl.find cost_hash (nodes.(i), y))) 
-        max_int next_nodes in
-      is_not_updated.(i) <- candidate_v = v.(nodes.(i));
-      if v.(nodes.(i)) > candidate_v then v.(nodes.(i)) <- candidate_v else ();
-    done;
-  in
-  let is_not_updated = Array.create n true in
-  show v;
-  update nodes cost_hash forward_link_hash v is_not_updated;
-  while not (Array.for_all (fun x -> x) is_not_updated) do
-    show v;
-    update nodes cost_hash forward_link_hash v is_not_updated;
-  done;
-  show v;
-  Printf.printf "cost:%d\n" v.(nodes.(0));
-  []
-     
+(* list up next update values *) 
+let get_candidate_values v next_nodes =
+  List.map (function (j,w) -> w + v.(j)) next_nodes;; 
 (* test *)
-let test1 = solve nodes forward_links costs 0 4 = [0;1;3;2;4]
+let test1 = 
+  let v = Array.create 5 0 in 
+    get_candidate_values v links.(0) = [8;15]   
+let test2 = 
+  let v = Array.create 5 10 in 
+    get_candidate_values v links.(0) = [18;25]
+let test3 =
+  let v = Array.create 5 10 in 
+    get_candidate_values v links.(3) = [15;27]
 
+(* update *)
+let update num_of_nodes v links is_not_updated path = 
+  for i=0 to num_of_nodes - 1 do
+    (* let candidates = get_candidate_values v links.(i) in 
+    let min_of_candidates = List.fold_left (fun x y -> min x y) max_int candidates in *)
+    let min_of_candidates = List.fold_left (fun x link -> let w = (v.(fst link) + snd link) in
+        if w < x then (path.(i) <- fst link; w) else x) max_int links.(i) in
+    (is_not_updated.(i) <- if min_of_candidates < v.(i) 
+                             then (v.(i) <- min_of_candidates; false)
+                           else true);
+    Printf.printf "%d:%d\t" i v.(i); 
+    ()
+  done;
+  Printf.printf "\n";
+  ();;
+
+(* backward *)
+let update num_of_nodes v links is_not_updated path = 
+  for i=num_of_nodes-1 downto 0 do
+    (* let candidates = get_candidate_values v links.(i) in 
+    let min_of_candidates = List.fold_left (fun x y -> min x y) max_int candidates in *)
+    let min_of_candidates = List.fold_left (fun x link -> let w = (v.(fst link) + snd link) in
+        if w < x then (path.(i) <- fst link; w) else x) max_int links.(i) in
+    (is_not_updated.(i) <- if min_of_candidates < v.(i) 
+                             then (v.(i) <- min_of_candidates; false)
+                           else true);
+    ()
+  done;
+  ();;
+
+(* get path *)
+let get_shortest_path links v =
+  Array.map
+
+let solve links = 
+  let big_m = 10000 in 
+  let num_of_nodes = (Array.length links) in
+  let path = Array.create num_of_nodes (~-1) in
+  let values = Array.create (num_of_nodes + 1) big_m in 
+  values.(num_of_nodes) <- 0; 
+  let is_not_updated_flags = Array.create num_of_nodes false in
+  while not (Array.for_all (fun x -> x) is_not_updated_flags) do
+    update num_of_nodes values links is_not_updated_flags path;
+    Array.iteri (fun i x -> Printf.printf "%d:%d\t" i x) values;
+    Printf.printf "\n";
+  done;
+  Array.iteri (fun i x -> Printf.printf "%d -> %d " i x) path; print_newline ();
+  (Array.fold_left (fun x y -> x + y) 0 values);;
+
+
+
+   
