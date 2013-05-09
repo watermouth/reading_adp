@@ -20,8 +20,6 @@ let update num_of_nodes v links is_not_updated path =
 (* backward *)
 let update num_of_nodes v links is_not_updated path = 
   for i=num_of_nodes-1 downto 0 do
-    (* let candidates = get_candidate_values v links.(i) in 
-    let min_of_candidates = List.fold_left (fun x y -> min x y) max_int candidates in *)
     let min_of_candidates = List.fold_left (fun x link -> let w = (v.(fst link) + snd link) in
         if w < x then (path.(i) <- fst link; w) else x) max_int links.(i) in
     (is_not_updated.(i) <- if min_of_candidates < v.(i) 
