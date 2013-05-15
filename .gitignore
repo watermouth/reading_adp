@@ -7,3 +7,8 @@
 *.cmx
 *.cmxs
 *.cmxa
+*.aux
+*.dvi
+*.log
+budgetting_discrete_old/*
+
