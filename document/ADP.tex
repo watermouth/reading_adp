@@ -325,11 +325,104 @@ $\hat{D}_t$の需要に対して$x_{t,t}$を反映させることはできない
 最適行動(価値を最大化する$x_{t,t^\prime}$の決定)については, やはりベルマン方程式を解けばよい.
 が, 本節の$x_t$や$R_t$は多次元ベクトルであり,
 すべての状態と行動を数値的に列挙するのは事実上不可能であるところが, 前節までと異なる.
-
+%% snip -
 \subsection{The Batch Replenishment Problem}
 \subsection{The Transformer Replacement Problem}
 \subsection{The Dynamic Assignment Problem}
-
+%% snip -
 \section{Information Acquisition Problems}
+\subsection{The Bandit Problem}
+ギャンブラーが$K$個のスロットマシーンのうち, どれを選ぶかを考えている.
+各スロットマシーンの勝率はそれぞれ固定された値であるとするが, どれがどの値かはギャンブラーは知らない.
+プレイすることで勝率に関するデータを収集することができる.
+
+\begin{description}
+	\item[$x_k^n$] $\begin{cases}1 \textrm{ if we choose to play the $k$th slot machine in the $n$th trial,} \\
+								 0 \textrm{ otherwise.} \end{cases}$
+	\item[$W_k^n$] winnings from the $k$th slot machine during the $n$th trial.
+	勝ちの場合の儲け額
+	\item[$\bar{w}_k^n$] our estimate of the expected winnings from playing the $k$th slot machine after the $n$th trial.
+	\item[$(\bar{s}_k^2)^n$] our estimate of the variance of the winnings from plaing the $k$th slot machine after the $n$th trail.
+	\\
+	右肩の$n$はべき乗ではなく$n$番目を表すもの.
+	\item[$N_k^n$] number of times after we have played the $k$th slot machine after $n$th trials.
+\end{description}
+素朴にはこのwinningsの平均が大きく, 分散が小さいスロットを使うのが良さそうに見える.
+無限回試行できるなら平均だけに着目すればよいだろう.
+
+$x_k^n = 1$ならば$W_k^n$は何らかの実現値となっているので, 次の式で推定値を更新できる:
+\begin{eqnarray}
+	\bar{w}_k^n &=& \left( 1 - \frac{1}{N_k^n} \right) \bar{w}_k^{n-1} + \frac{1}{N_k^n} W_k^n, \\
+	(\bar{s}_k^2)^n &=& \frac{N_k^n - 2}{N_k^n -1} (\bar{s}_k^2)^{n-1} + \frac{1}{N_k^n}(W_k^n-\bar{w}_k^{n-1})^2.
+\end{eqnarray}
+これらは$\mathcal{N}_k^n=\{m: x_k^m = 1, m=0,1,\dots,n \}$として定義できる自然な平均と分散である:
+\begin{eqnarray*}
+	\bar{w}_k^n &=& \frac{1}{N_k^n} \sum_{m \in \mathcal{N}_k^n} W_k^m, \\
+	(\bar{s}_k^2)^n &=& \frac{1}{N_k^n - 1} \sum_{m \in \mathcal{N}_k^n} (W_k^m - \bar{w}_k^m)^2\\
+	&=& \frac{1}{N_k^n - 1} \sum_{m \in \mathcal{N}_k^{n-1}}\{(W_k^m - \bar{w}_k^m)^2\} + \frac{1}{N_k^n - 1} (W_k^{n} - \bar{w}_k^{n})^2\\
+	&=& \frac{N_k^n-2}{N_k^n - 1} (\bar{s}_k^2)^{n-1}
+		+ \frac{1}{N_k^n-1}\left(W_k^n - \frac{1}{N_k^n}W_k^n - (\frac{N_k^n-1}{N_k^n})\bar{w}_k^{n-1} \right)\\
+	&=& \frac{N_k^n - 2}{N_k^n -1} (\bar{s}_k^2)^{n-1} + \frac{1}{N_k^n}(W_k^n-\bar{w}_k^{n-1})^2.
+\end{eqnarray*}
+
+$\bar{w}_k^n, (\bar{s}_k^2)^n$を状態変数として採用することで, $n$回目の試行の後のシステムの状態$S^n$を次のように定義できる:
+\[S_n = \left(\bar{w}_k^n, (\bar{s}_k^2)^n, N_k^n\right)_{k=1,2,\dots,K} \]
+このように定義しておくことで, $S_n$から$S_{n+1}$を求めることができる.
+$S_n$の要素は$N_k^n$分を除くと$2K$個あり, それぞれ一般に連続変数である.
+
+$S_n$は"知識の状態",つまりこの系に関する知識の程度を表すものと考えることができる.
+$\bar{w}_k^n$は文字通り平均的なwinningsを表しており,
+$(\bar{s}_k^2)^n$は勝率についてどの程度正確に知っているかを表している.
+$S_n$は"information state"もしくは"hyperstate"と呼ばれることがある.
+
+これは純粋なinformation acquisition problemとなっている.
+推定期待値最大となるactionをとる, すなわち$\bar{w}_k^n$が最大となるスロットを選んでプレイする
+のが良いと思えるが, これは正しくない.推定した期待値が正しくない場合に誤った戦略をとることになるためである.
+推定期待値が最大でないスロットを選ぶことも必要となる.
+
+理論的にはベルマン方程式により解くことが出来る.
+\begin{equation}
+	V_n(S_n) = \max_{x^n=(x_1^n,\dots,x_K^n), \sum x_k^n = 1} \left(\sum_{k=1}^{K}x_k^{n+1} W_k^{n+1} + V_{n+1}(S_{n+1})\mid S_n \right)
+\end{equation}
+この方程式は状態変数$S_n$が連続変数であること,
+$W_k^n$の分布も分かっていない\footnote{そもそも$W_k^n$の分布が分かっていれば, 個別に期待値を計算すれば良いだけである.}
+ことからもcomputeするのは困難である.
+しかしながら, $S_n$に含まれる推定された平均と分散により,
+真の分布に関する各スロットの平均と分散についてinferできる.
+
+このbandit problemの他にも多数のinformation acquisition problemsがあるので
+以下, いくつか紹介しておく. 
+またbandit problemを含む幾つかの問題はindex policyという方法を用いることで解くことが出来る.
+$K$次元の問題を$K$個の1次元の問題に帰着できるらしいが, これは後述となる.
+
+\begin{description}
+	\item[Example2.3] 引っ越した後, 自宅から職場までの時間に関する平均最短経路を見つけたい.
+	\item[Example2.4] 野球チームの監督が, 複数の野球選手のうち, ヒットを良く打つ選手を選びたい.
+	\item[Example2.5] 資産管理を資産マネジャーに任せたい. 誰に任せるといいか. どの時点で切り替えるといいか.
+	\item[Example2.6] A doctor is trying to determine the best blood pressure medication for a patient.
+	Each patient responds differently to each medication, so it is necessary to try a particular medication
+	for a while, and then switch if the doctor feels that better results can be achieved with a different medication.
+\end{description}
+前二つは統計とれば済むという気がする. 後ろ二つは本質的に難しい話に見える.
+これは自分が感じる結果の軽重度合いの問題かもしれない.
+
+\subsection{An Information-Collecting Shortest Path Problem}
+各リンクの平均・分散コストも分からないようなStochastic Shortest Path Problemを考える.
+bandit problemとの違いに着目する.
+
+ノード$i$から選べる次のノード$j_1,j_2$から$j_1$を選択して得られる情報(コスト)は,
+$j_2$を選んだ場合の$j_2$からGoalまでのコストに関する情報を含みうる.
+各ノードが共通の経路を含みうるためである.
+bandit problemでは, 各スロットの結果はそれぞれのスロットに関する情報にしかならなかった.
+
+また, $j_1$を選んだことにより次に選べるノードは$j_2$から選べるものと異なる.
+bandit problemでは, どのスロットを選んだ後であっても任意のスロットを選択できる.
+
+simple bandit problemsについては解けているが,
+このような集めた情報と将来の選択肢に影響を与えうる問題については, 未だ解かれていない.
+
+\chapter{Dynamic Resource Allocation Problems}
+\section{An Asset Acquisition Problem}
+
 
 \end{document}
