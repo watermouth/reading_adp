@@ -11,4 +11,6 @@
 *.dvi
 *.log
 budgetting_discrete_old/*
+.DS_store
+*.pdf
 
