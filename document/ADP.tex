@@ -226,7 +226,7 @@ $R_t$が状態変数であり, $V_t(R_t)$を価値関数と定義して, これ�
 \end{equation}
 となり, $\hat{D}_{t+1}, \dots$を通して確率的な量の期待値を考えることになることが分かる.
 
-\subsection{The Asset Acquisition Problem II}
+\subsection{The Asset Acquisition Problem II}\label{2.2.6}
 多くのasset 取得問題においては需要の他にも不確実性の原因となるものがある.
 まずは価格である.さらに, 保持している量に対する外生的な増減がありうる.
 
@@ -420,6 +420,158 @@ bandit problemでは, どのスロットを選んだ後であっても任意の�
 
 simple bandit problemsについては解けているが,
 このような集めた情報と将来の選択肢に影響を与えうる問題については, 未だ解かれていない.
+
+\section{A Simple Modeling Framework for Dynamic Programs}
+Stochastic Dynamic Programsを構成する要素
+\begin{description}
+	\item[State Variable.] This captures all the information we need to make a decision, 
+	as well as the information that we need to describe how the system evolves over time.
+	\item[Decision Variable.] Decisions/actions we represent how we control the process.
+	\item[Exogenous information.] This is data that first become known each time period
+	(e.g., the demand for product, or the price at which it can be purchased or sold).
+	In addition we have to be told the initial state of our system.
+	\item[Transition function.] This function determines how the system evolves from the 
+	state $S_t$ to the State $S_{t+1}$ given the decision that was made at time $t$ and 
+	the new information arrived between $t$ and $t+1$.
+	\item[Objective function.] This function specifies the costs being minimized,
+	 or contributions/rewards being maximized, over a time horizon.
+\end{description}
+\ref{2.2.6}節を用いて説明している. 
+
+Contribution function $C_t(S_t, a_t)$について, 一般には$C_t(S_t, a_t, W_{t+1})$となる場合もある,
+ということが触れられていたり, decision function $A^{\pi}$の記号が導入されている.
+それくらい.
+
+\chapter{Introduction to Markov Decision Processes}
+状態空間と行動空間(取りうるactionの集合)が小さい場合を扱う.
+\section{The Optimality Equations}
+次のような目的関数の求解を含む問題を前章で多く見た:
+\begin{equation}
+	\max_{\pi} \mathrm{E}^{\pi} \left( \sum_{t=0}^{T} \gamma ^t C_t^{\pi}(S_t, A_t^{\pi}(S_t)) \right)
+\end{equation}
+$\mathrm{E}^{\pi}$の$\pi$が付いたり付かなかったりするが,
+これは選択した行動が取得可能な情報に影響を与えるか与えないかによって,変わる.
+詳しくは5章で説明するらしい.
+
+通常, この求解問題を数値的に取り扱うことは困難であるが,
+いろいろ示唆を導くことが出来る.
+
+\subsection{Bellman's Equations}
+deterministic shortest path problemを考える.
+状態$S_t$の取りうる値をパス上のノードのインデックス$i$,
+ノード$j$へ移るアクション$a_t$をそのノードのインデックス$j$で表すことにする.
+\begin{eqnarray*}
+	S_t &=& i \\
+	a_t &=& j 
+\end{eqnarray*}
+さらに遷移関数$S^M(S_t,a_t)$
+\footnote{実はこれは上のアクションの定義から分かるように$a_t$を返す関数である.}
+を導入しておく.
+$S_{t+1} = S^M(S_t, a_t)$であり, $S_{t+1}$は$S_t$と$a_t$で確定的に定まる.
+
+$t+1$での状態$S_{t+1}$の価値$V_{t+1}(S_{t+1})$が与えられていると仮定しよう.
+1期間の貢献関数(contribution function)$C_t(S_t, a_t)$と
+1期間分だけある$\gamma $で$V_{t+1}(S_{t+1})$を割り引いた値の和を最大化する問題
+\begin{equation}
+	a_t^{*}(S_t) = \mathrm{arg} \max_{a \in \mathcal{A}_t} \left(C_t(S_t,a) + \gamma V_{t+1}(S^M(S_{t}, a) \right)
+\end{equation}
+を解きたい. $\mathcal{A}_t$は時刻$t$の状態が$S_t$のときの取りうるアクションの集合であって,
+$\mathcal{A}_t(S_t)$とでもかくべきものである.
+
+$S_t$での価値は$a_t^{*}(S_t)$を選んだときの価値であり,
+\begin{equation}
+	V_t(S_t) = C_t(S_t,a_t^{*}(S_t)) + \gamma V_{t+1}\left(S^M(S_{t}, a_t^{*}(S_t))\right)
+\end{equation}
+となる.
+
+これは状態・行動ペアの価値関数$V_t(s,a)$
+\[ V_t(s,a) = C_t(s,a) + \gamma V_{t+1}(S^M(s, a)) \]
+を導入すると見通しが良いのではないか. 解くべき問題を
+\[ V_t(S_t) = \max_{a \in \mathcal{A}_t(S_t)} V_t(S_t, a) \]
+と書き直すことが出来る.
+$V_t(S_t) = V_t(S_t, a_t^{*}(S_t))$である.
+
+次に, stochastic problemsを考えよう.
+行動を選択した後に新たな情報が入ってくるものとする.
+より具体的には, $C_t(S_t, a_t), S^M(S_t, a_t)$が確定的でなくなり,
+行動選択後の何らかの情報を加えて定まるものとする.
+
+石油精製所の在庫の時間発展を考えよう.
+\begin{description}
+	\item[$S_t$] 時点$t$の石油在庫量.
+	\item[$a_t$] $t$にorderされ, $t$と$t+1$の間に利用可能になる石油量. 生成する量と考えれば良い.
+	\item[$\hat{D}_{t+1}$] $t$と$t+1$の間の石油需要量. 出荷する量と考えれば良い.
+\end{description}
+時間順序としては$S_t \rightarrow a_t \rightarrow \hat{D}_{t+1}$という感じか.
+
+$S_{t+1}$は次のように書ける. これは遷移関数でもある.
+\[ S_{t+1}(S_t, a_t, \hat{D}_{t+1}) = \max \left(0, S_t + a_t - \hat{D}_{t+1} \right). \]
+$\hat{D}_{t+1}$の確率分布\footnote{ここではprobability mass functionである.}
+を$\mathrm{P}^{D}(x) = \mathrm{Prob}(\hat{D} = x)$とすると,
+$S_{t+1}$の確率分布は
+\begin{equation*}
+	\mathrm{Prob}(S_{t+1}=s^{\prime}) =
+	\begin{cases}
+		0, &s^{\prime} > S_t + a_t\\
+		\mathrm{Prob}(S_t + a_t -\hat{D}_{t+1} = s^{\prime}) = \mathrm{P}^D (S_t + a_t - s^\prime), &0 < s^{\prime} \le S_t + a_t\\
+		\sum_{d=S_t + a_t}^{\infty} \mathrm{P}^D (d) , &s^\prime = 0.
+	\end{cases}
+\end{equation*}
+この確率分布が$S_t, a_t$に依存していることが分かるので,
+\[ \mathrm{P}(S_{t+1} \mid S_t, a_t) \]
+という条件付き確率で表す.
+これを用いると解くべき問題は
+\begin{equation}
+	V_t(S_t) = \max_{a \in \mathcal{A}_t} \left(C_t(S_t,a) +
+	 \gamma \sum_{s^\prime \in \mathcal{S}} \mathrm{P}(S_{t+1}=s^\prime \mid S_t, a_t) V_{t+1}(s^\prime) \right)
+\end{equation}
+と書ける.この形はよく使われているので, 本書ではベルマン方程式の標準形と呼ぶことにする.
+ADP向けの等価な表現は期待値記号を用いたもので,
+\begin{equation}
+	V_t(S_t) = \max_{a \in \mathcal{A}_t} \left(C_t(S_t,a) +
+	 \gamma \mathrm{E} \left[ V_{t+1}(S_{t+1}(S_t, a_t, W_{t+1})) \mid S_t\right] \right).
+\end{equation}
+これをベルマン方程式の期待値形と呼ぶことにする.
+この形が後の章でのアルゴリズム関連の議論の基礎となる.
+
+ところで$S_{t+1}$の$S_t, a_t$依存性については, 関数型としての依存性と確率的な意味での依存性の2通りが考えられる
+ので注意するようにと書かれている. しかし,あまり気にする必要を感じない.
+どの部分が確率的か分かっていれば特に問題無いだろう.
+
+標準形がよく使われているのは, 行列形式で問題を記述できるかららしい.
+\[ p_{ss^\prime}(a) := \mathrm{P}(S_{t+1} = s^\prime | S_t = s, a_t = a) \]
+これは$s$から$a$を選択したときの$s^\prime$への遷移確率を表しており,
+$ss^\prime$が行列の要素を表すと見做せる.
+
+状態$S_t=s$に対してアクションを返す関数の集合を考える.その要素$A^\pi$は
+$A^\pi (S_t) \in \mathcal{A}_t $を満たす.
+また$A_t^\pi (s) := A^\pi (S_t=s)$をとしておく.
+\footnote{これは$A^\pi$が関数としては$t$依存性を持たないことを意図している.
+もしかすると, 陽に$t$依存性を持つものとしてポリシーというものを定義するべきかもしれないが,
+取りあえずこうしておく.違ったら読み替えてほしい.}
+各$A^\pi$は各状態でどのような行動を取るかを定めるものであり, これをポリシーと呼ぶことにする.
+ベルマン方程式を解くという問題は, 価値を最大化するポリシー$A^\pi$を探すという問題と言える.
+
+ポリシー$A^\pi$に関する遷移確率は
+\[ p_{ss^\prime}^\pi := \mathrm{P}(S_{t+1} = s^\prime | S_t = s, a_t = A_t^\pi(s)) \]
+となる. これらを要素とする行列を$P_t^\pi$と書くことにする.
+
+この辺りはより丁寧に, 
+\[ P_t^\pi = (p_{t,ss^\prime}^\pi) \]
+\[ p_{t,ss^\prime}^\pi := p_{t,ss^\prime}(A_t^\pi(s)) := P(S_{t+1}=s^\prime | S_t = s, a_t = A_t^\prime(s))\]
+ とでも書くべきな気はする.
+
+記号を整理する:
+\begin{enumerate}
+	\item[$v_t$] $V_t(s)$を要素として持つ$s$に関する縦ベクトル.
+	\item[$c_t^\pi$] $C_t(s,A_t^\pi(s))$を要素として持つ$s$に関する縦ベクトル.
+	\item[$P_t^\pi$] $\pi$で指定されるポリシー(略してポリシー$\pi$)に対する時点$t$での1 step 遷移確率行列.
+\end{enumerate}
+
+ベルマン方程式は次のように書ける.
+\begin{equation}
+	v_t = \max_{^\pi} \left( c_t^\pi + \gamma \mathrm{P}_t^\pi v_{t+1} \right)
+\end{equation}
 
 \chapter{Dynamic Resource Allocation Problems}
 \section{An Asset Acquisition Problem}
